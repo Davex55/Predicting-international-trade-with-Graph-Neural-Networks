@@ -5,8 +5,7 @@
 # @IDE      : PyCharm
 # @Github   : https://github.com/VeritasYin/Project_Orion
 
-#TODO cambiar los imports de TFM
-from data_loader.data_utilsTFM import gen_batch
+from data_loader.data_utils import gen_batch
 from utils.math_utils import evaluation, MAE, descale
 from os.path import join as pjoin
 

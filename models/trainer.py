@@ -5,8 +5,7 @@
 # @IDE      : PyCharm
 # @Github   : https://github.com/VeritasYin/Project_Orion
 
-#TODO cambiar los imports de TFM
-from data_loader.data_utilsTFM import gen_batch
+from data_loader.data_utils import gen_batch
 from models.tester import model_inference
 from models.base_model import build_model, model_save
 from os.path import join as pjoin
@@ -117,43 +116,25 @@ def model_train(inputs, blocks, args, sum_path='./output/tensorboard'):
             Info = "Epoch: {epoch}, Training Time: {time}"
             print(Info.format(epoch = i, time = time.strftime("%H:%M:%S", time.gmtime(t2 - t1))))
 
-            print(type(inputs.get_data('val')))
+            if(inputs.get_len('val') > 0):
 
-            # if(inputs.get_data('val') != None):
+                print('entra')
+                t1 = time.time()
 
-            #     t1 = time.time()
+                min_val = model_inference(sess, pred, inputs, batch_size, n_his, n_pred, step_idx, min_val)
+                for ix in tmp_idx:
+                    va = min_val[ix - 2:ix + 1]
+                    print(f'Time Step {ix + 1}: '
+                        f'MAPE {va[0]:7.3%}; '
+                        f'MAE  {va[1]:4.3f}; '
+                        f'RMSE {va[2]:6.3f}.')
 
-            #     min_val = model_inference(sess, pred, inputs, batch_size, n_his, n_pred, step_idx, min_val)
-            #     for ix in tmp_idx:
-            #         va = min_val[ix - 2:ix + 1]
-            #         print(f'Time Step {ix + 1}: '
-            #             f'MAPE {va[0]:7.3%}; '
-            #             f'MAE  {va[1]:4.3f}; '
-            #             f'RMSE {va[2]:6.3f}.')
+                t2 = time.time()
 
-            #     t2 = time.time()
+                Info = "Epoch: {epoch}, Inference Time: {time}"
+                print(Info.format(epoch = i, time = time.strftime("%H:%M:%S", time.gmtime(t2 - t1))))
 
-            #     Info = "Epoch: {epoch}, Inference Time: {time}"
-            #     print(Info.format(epoch = i, time = time.strftime("%H:%M:%S", time.gmtime(t2 - t1))))
-
-            #     summary = tf.Summary(value=[tf.Summary.Value(tag='Validation Loss', simple_value=min_val[2])])
-
-            t1 = time.time()
-
-            min_val = model_inference(sess, pred, inputs, batch_size, n_his, n_pred, step_idx, min_val)
-            for ix in tmp_idx:
-                va = min_val[ix - 2:ix + 1]
-                print(f'Time Step {ix + 1}: '
-                    f'MAPE {va[0]:7.3%}; '
-                    f'MAE  {va[1]:4.3f}; '
-                    f'RMSE {va[2]:6.3f}.')
-
-            t2 = time.time()
-
-            Info = "Epoch: {epoch}, Inference Time: {time}"
-            print(Info.format(epoch = i, time = time.strftime("%H:%M:%S", time.gmtime(t2 - t1))))
-
-            summary = tf.Summary(value=[tf.Summary.Value(tag='Validation Loss', simple_value=min_val[2])])
+                summary = tf.Summary(value=[tf.Summary.Value(tag='Validation Loss', simple_value=min_val[2])])
 
             # add the summary to the writer
             writer.add_summary(summary, global_step=i)
