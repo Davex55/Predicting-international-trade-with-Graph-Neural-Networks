@@ -172,7 +172,7 @@ def descale(x, p1, p2, normalize_type="robust_original"):
         raise ValueError("No accepted scalation type!!.")
 
 
-def get_stats(data, normalize_type):
+def gen_stats(data, normalize_type):
     '''
     :param data: np.ndarray, input array to be normalized.
     :param scalation_type: .
@@ -277,10 +277,11 @@ def evaluation(y, y_, normalization, stats):
     if dim == 3:
         # single_step case
 
-        v = descale(y, stats['mean'], stats['std'], normalization)
-        v_ = descale(y_, stats['mean'], stats['std'], normalization)
+        # It is better to keep the y and y_ variables normalized because of their high values.
+        # v = descale(y, stats['mean'], stats['std'], normalization)
+        # v_ = descale(y_, stats['mean'], stats['std'], normalization)
 
-        return np.array([MAPE(v, v_), MAE(v, v_), RMSE(v, v_)])
+        return np.array([MAPE(y, y_), MAE(y, y_), RMSE(y, y_)])
     else:
         # multi_step case
         tmp_list = []

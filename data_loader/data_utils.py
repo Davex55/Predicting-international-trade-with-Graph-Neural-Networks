@@ -5,7 +5,7 @@
 # @IDE      : PyCharm
 # @Github   : https://github.com/VeritasYin/Project_Orion
 
-from utils.math_utils import scale, get_stats
+from utils.math_utils import scale, gen_stats
 
 import numpy as np
 import pandas as pd
@@ -130,7 +130,7 @@ def data_gen(file_path, data_config, n_route, n_frame=21, interpolation = False)
     seq_val = seq_test
 
     # stats: dict, the stats for the train dataset, including the value of mean and standard deviation.
-    stats = get_stats(seq_train, normalization)
+    stats = gen_stats(seq_train, normalization)
 
     # Normalization of each np.array: x_train, x_val, x_test
     x_train = scale(seq_train, stats['mean'], stats['std'], normalization)

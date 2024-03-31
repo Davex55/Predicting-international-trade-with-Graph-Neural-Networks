@@ -118,7 +118,6 @@ def model_train(inputs, blocks, args, sum_path='./output/tensorboard'):
 
             if(inputs.get_len('val') > 0):
 
-                print('entra')
                 t1 = time.time()
 
                 min_val = model_inference(sess, pred, inputs, batch_size, n_his, n_pred, step_idx, min_val)
