@@ -138,7 +138,7 @@ def model_inference(sess, pred, inputs, batch_size, n_his, n_pred, step_idx, min
     :param min_val: np.ndarray, metric values on validation set.
     '''
     # Validation dataset, dataset statistics and normalization function applied to dataset
-    x_val, x_stats = inputs.get_data('val'), inputs.get_stats()
+    x_val, normalization, stats = inputs.get_data('val'), inputs.get_normalization(), inputs.get_stats()
 
     if n_his + n_pred > x_val.shape[1]:
         raise ValueError(f'ERROR: the value of n_pred "{n_pred}" exceeds the length limit.')
@@ -147,7 +147,7 @@ def model_inference(sess, pred, inputs, batch_size, n_his, n_pred, step_idx, min
     y_val, len_val = multi_pred(sess, pred, x_val, batch_size, n_his, n_pred, step_idx)
     # Evaluate the predictions of y_val with the ground truth data stored in x_val.
     # Note: with step_idx + n_his we get the index of the prediction store in x_val
-    evl_val = evaluation(x_val[0:len_val, step_idx + n_his, :, :], y_val, x_stats)
+    evl_val = evaluation(x_val[0:len_val, step_idx + n_his, :, :], y_val, normalization, stats)
     # chks: indicator that reflects the relationship of values between evl_val and min_val (array of booleans)
     chks = evl_val < min_val
     # Update the metric on validation set if model's performance got improved
