@@ -18,7 +18,9 @@ import time
 
 import pandas as pd
 
-def multi_pred(sess, y_pred, seq, batch_size, n_his, n_pred, step_idx, dynamic_batch=True):
+
+
+def multi_pred(sess, y_pred, seq, batch_size, n_his, n_pred, dynamic_batch=True):
     '''
     Multi_prediction function.
     :param sess: tf.Session().
@@ -26,43 +28,40 @@ def multi_pred(sess, y_pred, seq, batch_size, n_his, n_pred, step_idx, dynamic_b
     :param seq: np.ndarray, [len_seq, n_frame, n_route, C_0].
     :param batch_size: int, the size of batch.
     :param n_his: int, size of historical records for training.
-    :param n_pred: int, the length of prediction.
-    :param step_idx: int or list, index for prediction slice.
+    :param n_pred: int, the number of predictions.
     :param dynamic_batch: bool, whether changes the batch size in the last one if its length is less than the default.
     :return y_ : tensor, 'sep' [len_inputs, n_route, 1]; 'merge' [step_idx, len_inputs, n_route, 1].
             len_ : int, the length of prediction.
     '''
     pred_list = []
+    # Note: when the batch_size is greater than the length of the seq array, the gen_batch function uses len(seq) as batch size
     for i in gen_batch(seq, min(batch_size, len(seq)), dynamic_batch=dynamic_batch):
         # Note: use np.copy() to avoid the modification of source data.
         test_seq = np.copy(i[:, 0:n_his + 1, :, :])
         step_list = []
 
+        # n_pred predictions are made
         for j in range(n_pred):
             pred = sess.run(y_pred,
                             feed_dict={'data_input:0': test_seq, 'keep_prob:0': 1.0})
 
-            ############### Control ###############
-            # 50: It is the size of the batch.
-            # 50 (batch_size) of all possible "blocks" (which for train would be 9112), are the sequences that we pass to predict.
-            # 228: The value of the radars.
-            # 13: The number of history, what we use to test and not to predict at first.
-            # The first 13 (n_his) are used to predict, but then move the window to include the predictions themselves and then the predictions of the predictions.
-            ############### Control ###############
-
-            # ¿Que hace esto?
             if isinstance(pred, list):
                 pred = np.array(pred[0])
 
+            # The test_seq data is updated for the following prediction step
             test_seq[:, 0:n_his - 1, :, :] = test_seq[:, 1:n_his, :, :]
             test_seq[:, n_his - 1, :, :] = pred
+
+            # The results of the prediction are added to step_list
             step_list.append(pred)
+
+        # Predictions of this batch execution are added to pred_list
         pred_list.append(step_list)
 
-    #  pred_array -> [n_pred, batch_size, n_route, C_0)
+    # pred_array -> [n_pred, batch_size, n_route, C_0]
     pred_array = np.concatenate(pred_list, axis=1)
 
-    return pred_array[step_idx], pred_array.shape[1]
+    return pred_array, pred_array.shape[1]
 
 
 
@@ -144,16 +143,17 @@ def model_inference(sess, pred, inputs, batch_size, n_his, n_pred, step_idx, min
         raise ValueError(f'ERROR: the value of n_pred "{n_pred}" exceeds the length limit.')
 
     # Predictions of the validation dataset
-    y_val, len_val = multi_pred(sess, pred, x_val, batch_size, n_his, n_pred, step_idx)
+    y_val, len_val = multi_pred(sess, pred, x_val, batch_size, n_his, n_pred)
     # Evaluate the predictions of y_val with the ground truth data stored in x_val.
     # Note: with step_idx + n_his we get the index of the prediction store in x_val
-    evl_val = evaluation(x_val[0:len_val, step_idx + n_his, :, :], y_val, normalization, stats)
+    evl_val = evaluation(x_val[0:len_val, step_idx + n_his, :, :], y_val[step_idx], normalization, stats)
     # chks: indicator that reflects the relationship of values between evl_val and min_val (array of booleans)
     chks = evl_val < min_val
     # Update the metric on validation set if model's performance got improved
     min_val[chks] = evl_val[chks]
 
     return min_val
+
 
 
 def model_test(inputs, batch_size, n_his, n_pred, inf_mode, normalisation, load_path='./output/models/'):
