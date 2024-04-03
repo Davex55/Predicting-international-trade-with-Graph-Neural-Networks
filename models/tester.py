@@ -5,18 +5,15 @@
 # @IDE      : PyCharm
 # @Github   : https://github.com/VeritasYin/Project_Orion
 
-from data_loader.data_utils import gen_batch
+
 from utils.math_utils import evaluation, MAE, descale
+from data_loader.data_utils import gen_batch
+from tensorflow.compat import v1 as tf
 from os.path import join as pjoin
 
-# Arreglo para que tensorflow funcione en v1, ya que parece que todo se ha hecho en esa versión.
-import tensorflow
-from tensorflow.compat import v1 as tf
-
+import pandas as pd
 import numpy as np
 import time
-
-import pandas as pd
 
 
 
@@ -58,70 +55,11 @@ def multi_pred(sess, y_pred, seq, batch_size, n_his, n_pred, dynamic_batch=True)
         # Predictions of this batch execution are added to pred_list
         pred_list.append(step_list)
 
-    # pred_array -> [n_pred, batch_size, n_route, C_0]
+    # pred_array -> [n_pred, len(seq), n_route, C_0]
     pred_array = np.concatenate(pred_list, axis=1)
 
     return pred_array, pred_array.shape[1]
 
-
-
-def multi_pred_TFM(sess, y_pred, seq, batch_size, n_his, n_pred, step_idx, x_stats, normalisation, dynamic_batch=True):
-    '''
-    Multi_prediction function.
-    :param sess: tf.Session().
-    :param y_pred: placeholder.
-    :param seq: np.ndarray, [len_seq, n_frame, n_route, C_0].
-    :param batch_size: int, the size of batch.
-    :param n_his: int, size of historical records for training.
-    :param n_pred: int, the length of prediction.
-    :param step_idx: int or list, index for prediction slice.
-    :param dynamic_batch: bool, whether changes the batch size in the last one if its length is less than the default.
-    :return y_ : tensor, 'sep' [len_inputs, n_route, 1]; 'merge' [step_idx, len_inputs, n_route, 1].
-            len_ : int, the length of prediction.
-    '''
-    pred_list = []
-    for i in gen_batch(seq, min(batch_size, len(seq)), dynamic_batch=dynamic_batch):
-        # Note: use np.copy() to avoid the modification of source data.
-        test_seq = np.copy(i[:, 0:n_his + 1, :, :])
-        step_list = []
-
-        for j in range(n_pred):
-            pred = sess.run(y_pred,
-                            feed_dict={'data_input:0': test_seq, 'keep_prob:0': 1.0})
-
-            if isinstance(pred, list):
-                pred = np.array(pred[0])
-
-            test_seq[:, 0:n_his - 1, :, :] = test_seq[:, 1:n_his, :, :]
-            test_seq[:, n_his - 1, :, :] = pred
-            step_list.append(pred)
-        pred_list.append(step_list)
-
-    #  pred_array -> [n_pred, batch_size, n_route, C_0)
-    pred_array = np.concatenate(pred_list, axis=1)
-
-
-
-        ############################# SAVING EACH YEARS PREDICTIONS #####################################################
-    for x in range(step_idx[0]+1):
-        print(x, " and ", step_idx[0]+1)
-
-        print(seq.shape)
-        x_guardar = pd.DataFrame(descale(seq[:, n_his+x, :, 0], x_stats['mean'], x_stats['std'], normalisation))
-        x_guardarZ = pd.DataFrame(seq[:, -3+x, :, 0]) # 6-3 --n_his es de 6, el menos 3 es por el espacio!
-
-        y_guardar = pd.DataFrame(descale(pred_array[x, :, :, 0], x_stats['mean'], x_stats['std'], normalisation))
-        y_guardarZ = pd.DataFrame(pred_array[x, :, :, 0])
-        aux_guardar = pd.DataFrame([x_stats['mean'], x_stats['std']])
-
-        # 24+x = Año!
-        x_guardar.to_csv(f'X_guardado_{24+x}.csv', index=False)
-        x_guardarZ.to_csv(f'X_guardado_{24+x}Z.csv', index=False)
-        y_guardar.to_csv(f'Y_guardado_{24+x}.csv', index=False)
-        y_guardarZ.to_csv(f'Y_guardado_{24+x}Z.csv', index=False)
-        aux_guardar.to_csv(f'Aux.csv', index=False)
-
-    return pred_array[step_idx], pred_array.shape[1]
 
 
 def model_inference(sess, pred, inputs, batch_size, n_his, n_pred, step_idx, min_val):
@@ -156,19 +94,21 @@ def model_inference(sess, pred, inputs, batch_size, n_his, n_pred, step_idx, min
 
 
 
-def model_test(inputs, batch_size, n_his, n_pred, inf_mode, normalisation, load_path='./output/models/'):
+def model_test(inputs, batch_size, n_his, n_pred, inf_mode, load_path='./output/models/'):
     '''
     Load and test saved model from the checkpoint.
     :param inputs: instance of class Dataset, data source for test.
     :param batch_size: int, the size of batch.
     :param n_his: int, the length of historical records for training.
-    :param n_pred: int, the length of prediction.
+    :param n_pred: int, the number of predictions.
     :param inf_mode: str, test mode - 'merge / multi-step test' or 'separate / single-step test'.
     :param load_path: str, the path of loaded model.
     '''
-    start_time = time.time()
-    model_path = tf.train.get_checkpoint_state(load_path).model_checkpoint_path
+    # Timer
+    t1 = time.time()
 
+    # Load saved model from a checkpoint
+    model_path = tf.train.get_checkpoint_state(load_path).model_checkpoint_path
     test_graph = tf.Graph()
 
     with test_graph.as_default():
@@ -178,41 +118,64 @@ def model_test(inputs, batch_size, n_his, n_pred, inf_mode, normalisation, load_
         saver.restore(test_sess, tf.train.latest_checkpoint(load_path))
         print(f'>> Loading saved model from {model_path} ...')
 
+        # Get the 'y_pred' tensor from the tf graph collection
         pred = test_graph.get_collection('y_pred')
+        print(type(pred))
 
+        # Selection of the information mode. The step_idx variable determines which prediction is to be evaluated
         if inf_mode == 'sep':
-            # for inference mode 'sep', the type of step index is int.
+            # Note: for inference mode 'sep', the type of step index is int.
             step_idx = n_pred - 1
             tmp_idx = [step_idx]
         elif inf_mode == 'merge':
-            # for inference mode 'merge', the type of step index is np.ndarray.
+            # Note: for inference mode 'merge', the type of step index is np.ndarray (may have more than 1 prediction to evaluate).
             step_idx = tmp_idx = np.arange(3, n_pred + 1, 3) - 1
         else:
             raise ValueError(f'ERROR: test mode "{inf_mode}" is not defined.')
 
-        x_test, x_stats = inputs.get_data('test'), inputs.get_stats()
+        # Test dataset, dataset statistics and normalization function applied to dataset
+        x_test, normalization, stats = inputs.get_data('test'), inputs.get_normalization(), inputs.get_stats()
 
-         ############################# SAVING AND CONTROL #####################################################
-        # The evaluation has been rendered useless.
-        # Now to evaluate we compare the results to ARIMA in Jupiter inside "Trials.ipynb"
+        # Predictions of the test dataset
+        y_test, len_test = multi_pred(test_sess, pred, x_test, batch_size, n_his, n_pred)
+        # Evaluate the predictions of y_test with the ground truth data stored in x_test.
+        # Note: if inf_mode == 'sep' x_test -> [len(len_test), n_route, C_0], else x_test -> [len(len_test), len(step_idx), n_route, C_0]
+        evl = evaluation(x_test[0:len_test, step_idx + n_his, :, :], y_test[step_idx], normalization, stats)
 
-        y_test, len_test = multi_pred_TFM(test_sess, pred, x_test, batch_size, n_his, n_pred, step_idx, x_stats, normalisation)
-        evl = evaluation(x_test[0:len_test, step_idx + n_his, :, :], y_test, x_stats)
+        # Note: [n_pred, len(seq), n_route, C_0] -> [len(seq), n_pred, n_route, C_0]
+        y_test = np.swapaxes(y_test, 0, 1)
+        # Save model results in externals csv files
+        save_results(len_test, y_test[0:len_test, :, :, 0], normalization, stats)
+        save_results(len_test, x_test[0:len_test, n_his:, :, 0], normalization, stats)
 
-
-        x_tR = descale(x_test[0, -1, :4, 0], x_stats['mean'], x_stats['std'])
-        y_tR = descale(y_test[0, 0, :4, 0], x_stats['mean'], x_stats['std'])
-
-        x_tR = descale(x_test[0, -1, :, 0], x_stats['mean'], x_stats['std'])
-        y_tR = descale(y_test[0, 0, :, 0], x_stats['mean'], x_stats['std'])
-        print("Absolute error scaled:        ", MAE(x_test[0, step_idx + n_his, :, 0], y_test[0, 0, :, 0]))
-        print("Absolute error de-scaled:   ", MAE(x_tR, y_tR))
-
-
-
-
+        # Show evaluation results
         for ix in tmp_idx:
             te = evl[ix - 2:ix + 1]
-            print(f'Time Step {ix + 1}: MAPE {te[0]:7.3%}; MAE  {te[1]:4.3f}; RMSE {te[2]:6.3f}.')
-        print(f'Model Test Time {time.time() - start_time:.3f}s')
+            print(f'Time Step {ix + 1}: '
+                        f'MAPE {te[0]:7.3%}; '
+                        f'MAE  {te[1]:4.3f}; '
+                        f'RMSE {te[2]:6.3f}.')
+
+        # Timer
+        t2 = time.time()
+        Info = "Model Test Time: {time}"
+        print(Info.format(time = time.strftime("%H:%M:%S", time.gmtime(t2 - t1))))
+
     print('Testing model finished!')
+
+
+#TODO testear esto
+def save_results(len_seq, seq, normalization, stats, path=''):
+    '''
+    Store a descaled np.array in a .csv file.
+    :param len_seq: int , length of seq np.array.
+    :param seq: int, the length of historical records for training.
+    :param normalization: string, normalization function.
+    :param stats: dict, parameters for normalize and denormalize the dataset (mean & std/irq).
+    :param path: string, .
+    '''
+    for i in range(len_seq):
+        # seq[i, :, :] = [n_pred, n_route]
+        x_guardarZ = pd.DataFrame(descale(seq[i, :, :], stats['mean'], stats['std'], normalization))
+        print(x_guardarZ.shape)
+        x_guardarZ.to_csv(f'X_guardado_{i}Z.csv', header = None, index = False)

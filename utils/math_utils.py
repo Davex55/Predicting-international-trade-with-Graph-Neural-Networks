@@ -190,7 +190,7 @@ def gen_stats(data, normalize_type):
     else:
         raise ValueError("No accepted scalation type!!.")
 
-
+#TODO arreglar esto
 def get_column_data(data):
     '''
     :param data: .
@@ -281,6 +281,7 @@ def evaluation(y, y_, normalization, stats):
         # v = descale(y, stats['mean'], stats['std'], normalization)
         # v_ = descale(y_, stats['mean'], stats['std'], normalization)
 
+        #TODO devolver los resultados de funciones de evaluacion con los valores normalizados y desnormalizados
         return np.array([MAPE(y, y_), MAE(y, y_), RMSE(y, y_)])
     else:
         # multi_step case
@@ -289,6 +290,6 @@ def evaluation(y, y_, normalization, stats):
         y = np.swapaxes(y, 0, 1)
         # recursively call
         for i in range(y_.shape[0]):
-            tmp_res = evaluation(y[i], y_[i], stats)
+            tmp_res = evaluation(y[i], y_[i], normalization, stats)
             tmp_list.append(tmp_res)
         return np.concatenate(tmp_list, axis=-1)
