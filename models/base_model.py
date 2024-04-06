@@ -16,15 +16,15 @@ def build_model(inputs, n_his, Ks, Kt, blocks, keep_prob):
     '''
     Build the base model.
     :param inputs: placeholder.
-    :param n_his: int, size of historical records for training.
+    :param n_his: int, number of historical records used as input for the model.
     :param Ks: int, kernel size of spatial convolution.
     :param Kt: int, kernel size of temporal convolution.
     :param blocks: list, channel configs of st_conv blocks.
     :param keep_prob: placeholder.
     '''
     x = inputs[:, 0:n_his, :, :]
-    
-    
+
+
     # Ko>0: kernel size of temporal convolution in the output layer.
     Ko = n_his
     # ST-Block
@@ -38,18 +38,18 @@ def build_model(inputs, n_his, Ks, Kt, blocks, keep_prob):
         y = output_layer(x, Ko, 'output_layer')
     else:
         raise ValueError(f'ERROR: kernel size Ko must be greater than 1, but received "{Ko}".')
-    
+
     # Calculate MAPE error
     error_mape = tf.reduce_mean(tf.abs((inputs[:, n_his:n_his + 1, :, :] - inputs[:, n_his - 1:n_his, :, :]) / inputs[:, n_his - 1:n_his, :, :] + 1000))
 
 
     tf.add_to_collection(name='copy_loss',
                          value=tf.nn.l2_loss(inputs[:, n_his - 1:n_his, :, :] - inputs[:, n_his:n_his + 1, :, :]))
-    
+
     train_loss = tf.nn.l2_loss(y - inputs[:, n_his:n_his + 1, :, :])
     single_pred = y[:, 0, :, :]
     tf.add_to_collection(name='y_pred', value=single_pred)
-    
+
     return train_loss, single_pred
 
 

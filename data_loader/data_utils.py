@@ -15,6 +15,7 @@ class Dataset(object):
     def __init__(self, data, normalization, stats):
         self._data = data
         self._normalization = normalization
+        #TODO cambiar los nombres mean y std
         self.mean = stats['mean']
         self.std = stats['std']
 
@@ -31,7 +32,7 @@ class Dataset(object):
         return {'mean': self.mean, 'std': self.std}
 
 
-def seq_gen_simple(len_seq, data_seq, offset, n_frame, n_route, C_0=1):
+def seq_gen(len_seq, data_seq, offset, n_frame, n_route, C_0=1):
     '''
     Generate data in the form of standard sequence unit.
     :param len_seq: int, the length of target data sequence.
@@ -45,7 +46,7 @@ def seq_gen_simple(len_seq, data_seq, offset, n_frame, n_route, C_0=1):
     '''
     # An empty numpy array is created to store the data
     tmp_seq = np.zeros((len_seq, n_frame, n_route, C_0))
-    # A sequence is created for each of the len_seq
+    # One element of the time series is store in tmp_seq for each len_seq
     for i in range(len_seq):
         sta = offset + i
         end = sta + n_frame
@@ -55,40 +56,28 @@ def seq_gen_simple(len_seq, data_seq, offset, n_frame, n_route, C_0=1):
     return tmp_seq
 
 
-#TODO hacer la interpolacion
-def seq_gen_interpolation(len_seq, data_seq, offset, n_frame, n_route, C_0=1, partern_slot=3):
+#TODO testear esto
+def gen_interpolation_points(data_seq, partern_slot=3):
     '''
-    Generate data in the form of standard sequence unit.
-    :param len_seq: int, the length of target data sequence.
+    Generate interpolation points for the dataset.
     :param data_seq: np.ndarray, source data / time-series.
-    :param offset:  int, the starting index of the data in the data_seq.
-    :param n_frame: int, the number of frame within a standard sequence unit,
-        which contains n_his and n_pred (number of historical data and number of predictions per inference).
-    :param n_route: int, the number of routes in the graph.
-    :param C_0: int, the size of input channel.
-    :param partern_slot: int, .
+    :param partern_slot: int, number of new points created between two original data points.
     :return: np.ndarray, [len_seq, n_frame, n_route, C_0].
     '''
-    años_testing = 1 * partern_slot
-    años_training  = n_frame - años_testing
+    concat_list = [data_seq]
 
-    #años_training  = 4 * partern_slot + 1
+    # Creation of an empty dataframe with the same indexes as data_seq
+    nan_df = pd.DataFrame(index = data_seq.index)
+    for i in range(partern_slot):
+        concat_list.append(nan_df)
 
-    tmp_seq = np.zeros((len_seq, años_training + años_testing, n_route, C_0))
-    print(tmp_seq.shape)
+    # The df's in the concat_list are concatenated so that the resulting df contains enough empty rows to use interpolation.
+    # Note: sort_index is used to sort the df and reset the index numbers. This way the empty rows are placed in the middle of the original ones.
+    data_seq = (pd.concat(concat_list).sort_index(kind='stable', ignore_index = True))
+    # Interpolation is used to fill empty rows in df
+    data_seq.interpolate(method ='linear', limit_direction ='forward', inplace = True)
 
-    for i in range(0, len_seq*partern_slot, partern_slot):
-        sta = i + offset * partern_slot
-        end = sta + años_training + años_testing
-        print(sta, end)
-        #print(tmp_seq[int(i/partern_slot), :, :, :].shape)
-        #print(data_seq[sta:end, :].shape)
-
-        tmp_seq[int(i/partern_slot), :, :, :] = np.reshape(data_seq[sta:end, :], [años_training+años_testing, n_route, C_0])
-        #print(tmp_seq[int(i/3), 0, :, :])
-        #print(tmp_seq[int(i/3), -1, :, :])
-
-    return tmp_seq
+    return data_seq
 
 
 def data_gen(file_path, data_config, n_route, n_frame=21, interpolation = False):
@@ -96,10 +85,9 @@ def data_gen(file_path, data_config, n_route, n_frame=21, interpolation = False)
     Source file load and dataset generation for training, validation and test.
     :param file_path: str, the file path of data source.
     :param data_config: tuple, the configs of dataset in train, validation, test.
-    :param n_route: int, the number of routes in the graph.
     :param n_frame: int, the number of frame within a standard sequence unit,
-                         which contains n_his = 12 and n_pred = 9 (3 /15 min, 6 /30 min & 9 /45 min).
-    :param day_slot: int, the number of time slots per day, controlled by the time window (5 min as default).
+        which contains n_his and n_pred (number of historical data and number of predictions per inference).
+    :param n_route: int, the number of routes in the graph.
     :return: dict, dataset that contains training, validation and test with stats.
     '''
     # The length of each data sequence (training, validation and test) and normalization function
@@ -113,18 +101,14 @@ def data_gen(file_path, data_config, n_route, n_frame=21, interpolation = False)
     except FileNotFoundError:
         print(f'ERROR: input file was not found in {file_path}.')
 
-    # Generation of each sequence
-    if not interpolation:
-        # Normal
-        seq_train = seq_gen_simple(n_train, data_seq, 0, n_frame, n_route)
-        seq_val = seq_gen_simple(n_val, data_seq, n_train, n_frame, n_route)
-        seq_test = seq_gen_simple(n_test, data_seq, n_train + n_val, n_frame, n_route)
+    # Generation of new data points by interpolation
+    if (interpolation):
+        data_seq = gen_interpolation_points(data_seq, 3)
 
-    else:
-        # With interpolation
-        seq_train = seq_gen_interpolation(n_train, data_seq, 0, n_frame, n_route, 3)
-        seq_val = seq_gen_interpolation(n_val, data_seq, n_train, n_frame, n_route, 3)
-        seq_test = seq_gen_interpolation(n_test, data_seq, n_train + n_val, n_frame, n_route, 3)
+    # Generation of each sequence
+    seq_train = seq_gen(n_train, data_seq.values, 0, n_frame, n_route)
+    seq_val = seq_gen(n_val, data_seq.values, n_train, n_frame, n_route)
+    seq_test = seq_gen(n_test, data_seq.values, n_train + n_val, n_frame, n_route)
 
     # Temporal
     seq_val = seq_test

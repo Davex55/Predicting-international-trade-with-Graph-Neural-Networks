@@ -24,11 +24,11 @@ def multi_pred(sess, y_pred, seq, batch_size, n_his, n_pred, dynamic_batch=True)
     :param y_pred: placeholder.
     :param seq: np.ndarray, [len_seq, n_frame, n_route, C_0].
     :param batch_size: int, the size of batch.
-    :param n_his: int, size of historical records for training.
+    :param n_his: int, number of historical records used as input for the model.
     :param n_pred: int, the number of predictions.
     :param dynamic_batch: bool, whether changes the batch size in the last one if its length is less than the default.
-    :return y_ : tensor, 'sep' [len_inputs, n_route, 1]; 'merge' [step_idx, len_inputs, n_route, 1].
-            len_ : int, the length of prediction.
+    :return y_ : tensor, [n_pred, len(seq), n_route, C_0].
+            len_ : int, len(seq).
     '''
     pred_list = []
     # Note: when the batch_size is greater than the length of the seq array, the gen_batch function uses len(seq) as batch size
@@ -69,9 +69,9 @@ def model_inference(sess, pred, inputs, batch_size, n_his, n_pred, step_idx, min
     :param pred: placeholder.
     :param inputs: instance of class Dataset, data source for inference.
     :param batch_size: int, the size of batch.
-    :param n_his: int, the length of historical records for training.
-    :param n_pred: int, the length of prediction.
-    :param step_idx: int or list, index for prediction slice.
+    :param n_his: int, number of historical records used as input for the model.
+    :param n_pred: int, the number of predictions.
+    :param step_idx: int or list, index for the evaluation of predictions.
     :param min_val: np.ndarray, metric values on validation set.
     '''
     # Validation dataset, dataset statistics and normalization function applied to dataset
@@ -99,7 +99,7 @@ def model_test(inputs, batch_size, n_his, n_pred, inf_mode, load_path='./output/
     Load and test saved model from the checkpoint.
     :param inputs: instance of class Dataset, data source for test.
     :param batch_size: int, the size of batch.
-    :param n_his: int, the length of historical records for training.
+    :param n_his: int, number of historical records used as input for the model.
     :param n_pred: int, the number of predictions.
     :param inf_mode: str, test mode - 'merge / multi-step test' or 'separate / single-step test'.
     :param load_path: str, the path of loaded model.
