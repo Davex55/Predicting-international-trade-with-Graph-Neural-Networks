@@ -95,7 +95,7 @@ def data_gen(file_path, data_config, n_route, n_frame=21, interpolation = False)
 
     # Load the data into a numpy array
     try:
-        data_seq = pd.read_csv(file_path, header=0).values
+        data_seq = pd.read_csv(file_path, header=0)
         # data_seq = pd.read_csv(file_path, header=None).values
 
     except FileNotFoundError:

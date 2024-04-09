@@ -86,9 +86,9 @@ def model_inference(sess, pred, inputs, batch_size, n_his, n_pred, step_idx, min
     # Note: with step_idx + n_his we get the index of the prediction store in x_val
     evl_val = evaluation(x_val[0:len_val, step_idx + n_his, :, :], y_val[step_idx], normalization, stats)
     # chks: indicator that reflects the relationship of values between evl_val and min_val (array of booleans)
-    chks = evl_val < min_val
+    chks = evl_val[0] < min_val
     # Update the metric on validation set if model's performance got improved
-    min_val[chks] = evl_val[chks]
+    min_val[chks] = evl_val[0, chks]
 
     return min_val
 
@@ -126,7 +126,7 @@ def model_test(inputs, batch_size, n_his, n_pred, inf_mode, load_path='./output/
         if inf_mode == 'sep':
             # Note: for inference mode 'sep', the type of step index is int.
             step_idx = n_pred - 1
-            tmp_idx = [step_idx]
+            tmp_idx = [2]
         elif inf_mode == 'merge':
             # Note: for inference mode 'merge', the type of step index is np.ndarray (may have more than 1 prediction to evaluate).
             step_idx = tmp_idx = np.arange(3, n_pred + 1, 3) - 1
@@ -149,12 +149,12 @@ def model_test(inputs, batch_size, n_his, n_pred, inf_mode, load_path='./output/
         save_results(len_test, x_test[0:len_test, n_his:, :, 0], normalization, stats)
 
         # Show evaluation results
-        for ix in tmp_idx:
-            te = evl[ix - 2:ix + 1]
-            print(f'Time Step {ix + 1}: '
-                        f'MAPE {te[0]:7.3%}; '
-                        f'MAE  {te[1]:4.3f}; '
-                        f'RMSE {te[2]:6.3f}.')
+        for ix, x in enumerate(tmp_idx):
+            te_0 = evl[0, x - 2:x + 1]
+            te_1 = evl[1, x - 2:x + 1]
+            print(f'Time Step {ix + 1}:')
+            print(f'With normalization: MAPE {te_0[0]:7.3%}; MAE  {te_0[1]:4.3f}; RMSE {te_0[2]:6.3f}.')
+            print(f'Without normalization:: MAPE {te_1[0]:7.3%}; MAE  {te_1[1]:4.3f}; RMSE {te_1[2]:6.3f}.')
 
         # Timer
         t2 = time.time()

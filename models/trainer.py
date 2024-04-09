@@ -12,7 +12,6 @@ from os.path import join as pjoin
 from datetime import datetime
 
 # Arreglo para que tensorflow funcione en v1, ya que parece que todo se ha hecho en esa versión. +
-import tensorflow
 from tensorflow.compat import v1 as tf
 
 import numpy as np
@@ -76,7 +75,7 @@ def model_train(inputs, blocks, args, sum_path='./output/tensorboard'):
         if inf_mode == 'sep':
             # for inference mode 'sep', the type of step index is int.
             step_idx = n_pred - 1
-            tmp_idx = [step_idx]
+            tmp_idx = [2]
             min_val = np.array([4e20, 1e20, 1e20]) #np.array([4e1, 1e5, 1e5])
         elif inf_mode == 'merge': # Por defecto
             # for inference mode 'merge', the type of step index is np.ndarray.
@@ -91,10 +90,11 @@ def model_train(inputs, blocks, args, sum_path='./output/tensorboard'):
             # x_batch are simply train chunks of size ["batch_size", 21, 228, 1].
             # In addition, the loop is going to run len(inputs.get_data('train'))/batch_size, which for the standard case is 182-183 times.
             # n_his, refers to the number of historical records to be used for the prediction, by default 13 of the possible 21 possible records are used.
+            print('epcoch: ' + str(i))
             for j, x_batch in enumerate(
                     gen_batch(inputs.get_data('train'), batch_size, dynamic_batch=True, shuffle=True)):
                 # Train_op = Train optimizers
-
+                print('batch: ' + str(j))
                 # Enter data to make predictions.
                 # Calculates the train_loss with the X (originally 8) rows that it does not use.
                 # As the "train_op" is entered, this is where the backpropagation is done, because for that you need an optimizer!!!
@@ -103,7 +103,7 @@ def model_train(inputs, blocks, args, sum_path='./output/tensorboard'):
                 #TODO comprobar si se puede mejorar el proceso de entrenamiento (se entrena con npred = 1 y se desperdicia el resto)
                 summary, w = sess.run([merged, train_op], feed_dict={x: x_batch[:, 0:n_his + 1, :, :], keep_prob: 1})
                 writer.add_summary(summary, i * epoch_step + j)
-
+                print('done')
                 # Check every 10 iterations!
                 if j % 10 == 0: # if j % 10 == 0:
                     loss_value = \
@@ -121,8 +121,8 @@ def model_train(inputs, blocks, args, sum_path='./output/tensorboard'):
                 t1 = time.time()
 
                 min_val = model_inference(sess, pred, inputs, batch_size, n_his, n_pred, step_idx, min_val)
-                for ix in tmp_idx:
-                    va = min_val[ix - 2:ix + 1]
+                for ix, x in enumerate(tmp_idx):
+                    va = min_val[x - 2:x + 1]
                     print(f'Time Step {ix + 1}: '
                         f'MAPE {va[0]:7.3%}; '
                         f'MAE  {va[1]:4.3f}; '
