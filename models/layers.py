@@ -5,11 +5,11 @@
 # @IDE      : PyCharm
 # @Github   : https://github.com/VeritasYin/Project_Orion
 
-# Arreglo para que tensorflow funcione en v1, ya que parece que todo se ha hecho en esa versión. + 
+# Arreglo para que tensorflow funcione en v1, ya que parece que todo se ha hecho en esa versión. +
 import tensorflow
 from tensorflow.compat import v1 as tf
 
-# Arreglo para quitar el modo "eager" + 
+# Arreglo para quitar el modo "eager" +
 tf.disable_eager_execution()
 
 
@@ -65,7 +65,7 @@ def temporal_conv_layer(x, Kt, c_in, c_out, act_func='relu'):
     :return: tensor, [batch_size, time_step-Kt+1, n_route, c_out].
     '''
     _, T, n, _ = x.get_shape().as_list()
-    
+
     if c_in > c_out:
         w_input = tf.get_variable('wt_input', shape=[1, 1, c_in, c_out], dtype=tf.float32)
         tf.add_to_collection(name='weight_decay', value=tf.nn.l2_loss(w_input))
@@ -75,10 +75,10 @@ def temporal_conv_layer(x, Kt, c_in, c_out, act_func='relu'):
         # padding x to the same size of output channel.
         # Note, _.get_shape() cannot convert a partially known TensorShape to a Tensor.
         x_input = tf.concat([x, tf.zeros([tf.shape(x)[0], T, n, c_out - c_in])], axis=3)
-        
+
     else:
         x_input = x
-        
+
 
     # keep the original input for residual connection.
     x_input = x_input[:, Kt - 1:T, :, :]
@@ -106,7 +106,7 @@ def temporal_conv_layer(x, Kt, c_in, c_out, act_func='relu'):
             print("Canales de entrada: ", c_in)
             print("Canales de salida: ", c_in)
             x_conv = tf.nn.conv2d(x, wt, strides=[1, 1, 1, 1], padding='VALID') + bt
-            
+
         if act_func == 'linear':
             return x_conv
         elif act_func == 'sigmoid':
@@ -166,18 +166,18 @@ def st_conv_block(x, Ks, Kt, channels, scope, keep_prob, act_func='GLU'):
     :return: tensor, [batch_size, time_step, n_route, c_out].
     '''
     c_si, c_t, c_oo = channels
-    
-    
+
+
     with tf.variable_scope(f'stn_block_{scope}_in'):
         x_s = temporal_conv_layer(x, Kt, c_si, c_t, act_func=act_func)
 
-        print("Tamaño de x", x
-        
+        print("Tamaño de x", x)
+
         x_t = spatio_conv_layer(x_s, Ks, c_t, c_t)
     with tf.variable_scope(f'stn_block_{scope}_out'):
         x_o = temporal_conv_layer(x_t, Kt, c_t, c_oo)
     x_ln = layer_norm(x_o, f'layer_norm_{scope}')
-    
+
     return tf.nn.dropout(x_ln, keep_prob)
 
 
