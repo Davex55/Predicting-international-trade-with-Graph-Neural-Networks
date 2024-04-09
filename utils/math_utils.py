@@ -276,25 +276,20 @@ def evaluation(y, y_, normalization, stats):
 
     if dim == 3:
         # single_step case
-        v = descale(y, stats['mean'], stats['std'], normalization)
-        v_ = descale(y_, stats['mean'], stats['std'], normalization)
 
-        scale_list = [MAPE(y, y_), MAE(y, y_), RMSE(y, y_)]
-        descale_list = [MAPE(v, v_), MAE(v, v_), RMSE(v, v_)]
+        # It is better to keep the y and y_ variables normalized because of their high values.
+        # v = descale(y, stats['mean'], stats['std'], normalization)
+        # v_ = descale(y_, stats['mean'], stats['std'], normalization)
 
-        # [2, 3] --> [0, 3] scaled metrics | [1, 3] descaled metrics
-        return np.array([scale_list, descale_list])
-
+        #TODO devolver los resultados de funciones de evaluacion con los valores normalizados y desnormalizados
+        return np.array([MAPE(y, y_), MAE(y, y_), RMSE(y, y_)])
     else:
         # multi_step case
         tmp_list = []
         # y -> [time_step, batch_size, n_route, 1]
         y = np.swapaxes(y, 0, 1)
-
         # recursively call
         for i in range(y_.shape[0]):
             tmp_res = evaluation(y[i], y_[i], normalization, stats)
             tmp_list.append(tmp_res)
-
-        # [2, 3*y_.shape[0]] --> [0, :] scaled metrics | [1, :] descaled metrics
         return np.concatenate(tmp_list, axis=-1)
