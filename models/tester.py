@@ -120,16 +120,16 @@ def model_test(inputs, batch_size, n_his, n_pred, inf_mode, load_path='./output/
 
         # Get the 'y_pred' tensor from the tf graph collection
         pred = test_graph.get_collection('y_pred')
-        print(type(pred))
 
         # Selection of the information mode. The step_idx variable determines which prediction is to be evaluated
         if inf_mode == 'sep':
             # Note: for inference mode 'sep', the type of step index is int.
             step_idx = n_pred - 1
-            tmp_idx = [step_idx]
+            tmp_idx = [0]
         elif inf_mode == 'merge':
             # Note: for inference mode 'merge', the type of step index is np.ndarray (may have more than 1 prediction to evaluate).
-            step_idx = tmp_idx = np.arange(3, n_pred + 1, 3) - 1
+            step_idx = np.arange(3, n_pred + 1, 3) - 1
+            tmp_idx = np.arange(len(step_idx))
         else:
             raise ValueError(f'ERROR: test mode "{inf_mode}" is not defined.')
 
@@ -145,12 +145,12 @@ def model_test(inputs, batch_size, n_his, n_pred, inf_mode, load_path='./output/
         # Note: [n_pred, len(seq), n_route, C_0] -> [len(seq), n_pred, n_route, C_0]
         y_test = np.swapaxes(y_test, 0, 1)
         # Save model results in externals csv files
-        save_results(len_test, y_test[0:len_test, :, :, 0], normalization, stats)
-        save_results(len_test, x_test[0:len_test, n_his:, :, 0], normalization, stats)
+        save_results(len_test, y_test[0:len_test, :, :, 0], normalization, stats, path = "predictions.csv")
+        save_results(len_test, x_test[0:len_test, n_his:, :, 0], normalization, stats, path = "groundTruth.csv")
 
         # Show evaluation results
         for ix in tmp_idx:
-            te = evl[ix - 2:ix + 1]
+            te = evl[ix * 3:(ix * 3) + 3]
             print(f'Time Step {ix + 1}: '
                         f'MAPE {te[0]:7.3%}; '
                         f'MAE  {te[1]:4.3f}; '
@@ -164,8 +164,7 @@ def model_test(inputs, batch_size, n_his, n_pred, inf_mode, load_path='./output/
     print('Testing model finished!')
 
 
-#TODO testear esto
-def save_results(len_seq, seq, normalization, stats, path=''):
+def save_results(len_seq, seq, normalization, stats, path = 'results.csv'):
     '''
     Store a descaled np.array in a .csv file.
     :param len_seq: int , length of seq np.array.
@@ -176,6 +175,5 @@ def save_results(len_seq, seq, normalization, stats, path=''):
     '''
     for i in range(len_seq):
         # seq[i, :, :] = [n_pred, n_route]
-        x_guardarZ = pd.DataFrame(descale(seq[i, :, :], stats['mean'], stats['std'], normalization))
-        print(x_guardarZ.shape)
-        x_guardarZ.to_csv(f'X_guardado_{i}Z.csv', header = None, index = False)
+        save_results = pd.DataFrame(descale(seq[i, :, :], stats['mean'], stats['std'], normalization))
+        save_results.to_csv(path, header = None, index = False)

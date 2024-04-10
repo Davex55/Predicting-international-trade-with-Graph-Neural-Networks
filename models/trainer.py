@@ -76,11 +76,12 @@ def model_train(inputs, blocks, args, sum_path='./output/tensorboard'):
         if inf_mode == 'sep':
             # for inference mode 'sep', the type of step index is int.
             step_idx = n_pred - 1
-            tmp_idx = [step_idx]
+            tmp_idx = [0]
             min_val = np.array([4e20, 1e20, 1e20]) #np.array([4e1, 1e5, 1e5])
         elif inf_mode == 'merge': # Por defecto
             # for inference mode 'merge', the type of step index is np.ndarray.
-            step_idx = tmp_idx = np.arange(3, n_pred + 1, 3) - 1
+            step_idx = np.arange(3, n_pred + 1, 3) - 1
+            tmp_idx = np.arange(len(step_idx))
             min_val = np.array([4e20, 1e20, 1e20] * len(step_idx)) #np.array([4e1, 1e5, 1e5] * len(step_idx))
         else:
             raise ValueError(f'ERROR: test mode "{inf_mode}" is not defined.')
@@ -122,7 +123,7 @@ def model_train(inputs, blocks, args, sum_path='./output/tensorboard'):
 
                 min_val = model_inference(sess, pred, inputs, batch_size, n_his, n_pred, step_idx, min_val)
                 for ix in tmp_idx:
-                    va = min_val[ix - 2:ix + 1]
+                    va = min_val[ix * 3:(ix * 3) + 3]
                     print(f'Time Step {ix + 1}: '
                         f'MAPE {va[0]:7.3%}; '
                         f'MAE  {va[1]:4.3f}; '
