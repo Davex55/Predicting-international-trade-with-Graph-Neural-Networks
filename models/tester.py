@@ -170,10 +170,10 @@ def save_results(len_seq, seq, normalization, stats, path = 'results.csv'):
     :param len_seq: int , length of seq np.array.
     :param seq: int, the length of historical records for training.
     :param normalization: string, normalization function.
-    :param stats: dict, parameters for normalize and denormalize the dataset (mean & std/irq).
+    :param stats: dict, parameters for normalize and denormalize the dataset (mean & std/iqr).
     :param path: string, .
     '''
     for i in range(len_seq):
         # seq[i, :, :] = [n_pred, n_route]
-        save_results = pd.DataFrame(descale(seq[i, :, :], stats['mean'], stats['std'], normalization))
+        save_results = pd.DataFrame(descale(seq[i, :, :], stats, normalization))
         save_results.to_csv(path, header = None, index = False)

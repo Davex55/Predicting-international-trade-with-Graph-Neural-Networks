@@ -15,9 +15,7 @@ class Dataset(object):
     def __init__(self, data, normalization, stats):
         self._data = data
         self._normalization = normalization
-        #TODO cambiar los nombres mean y std
-        self.mean = stats['mean']
-        self.std = stats['std']
+        self.stats = stats
 
     def get_data(self, type):
         return self._data[type]
@@ -29,7 +27,7 @@ class Dataset(object):
         return self._normalization
 
     def get_stats(self):
-        return {'mean': self.mean, 'std': self.std}
+        return self.stats
 
 
 def seq_gen(len_seq, data_seq, offset, n_frame, n_route, C_0=1):
@@ -50,13 +48,11 @@ def seq_gen(len_seq, data_seq, offset, n_frame, n_route, C_0=1):
     for i in range(len_seq):
         sta = offset + i
         end = sta + n_frame
-        print(sta, end)
         # The information is stored in the desired format.
         tmp_seq[i, :, :, :] = np.reshape(data_seq[sta:end, :], [n_frame, n_route, C_0])
     return tmp_seq
 
 
-#TODO testear esto
 def gen_interpolation_points(data_seq, partern_slot=3):
     '''
     Generate interpolation points for the dataset.
@@ -80,7 +76,7 @@ def gen_interpolation_points(data_seq, partern_slot=3):
     return data_seq
 
 
-def data_gen(file_path, data_config, n_route, n_frame=21, interpolation = False):
+def data_gen(file_path, data_config, n_frame, n_route, interpolation = False):
     '''
     Source file load and dataset generation for training, validation and test.
     :param file_path: str, the file path of data source.
@@ -113,13 +109,13 @@ def data_gen(file_path, data_config, n_route, n_frame=21, interpolation = False)
     # Temporal
     seq_val = seq_test
 
-    # stats: dict, the stats for the train dataset, including the value of mean and standard deviation.
+    # stats: dict, the stats for the train dataset, including the value of mean, standard deviation and iqr.
     stats = gen_stats(seq_train, normalization)
 
     # Normalization of each np.array: x_train, x_val, x_test
-    x_train = scale(seq_train, stats['mean'], stats['std'], normalization)
-    x_val = scale(seq_val, stats['mean'], stats['std'], normalization)
-    x_test = scale(seq_test, stats['mean'], stats['std'], normalization)
+    x_train = scale(seq_train, stats, normalization)
+    x_val = scale(seq_val, stats, normalization)
+    x_test = scale(seq_test, stats, normalization)
 
     # Creation of the dataset object
     x_data = {'train': x_train, 'val': x_val, 'test': x_test}
