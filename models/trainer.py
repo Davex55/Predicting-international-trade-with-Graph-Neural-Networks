@@ -9,10 +9,7 @@ from data_loader.data_utils import gen_batch
 from models.tester import model_inference
 from models.base_model import build_model, model_save
 from os.path import join as pjoin
-from datetime import datetime
 
-# Arreglo para que tensorflow funcione en v1, ya que parece que todo se ha hecho en esa versión. +
-import tensorflow
 from tensorflow.compat import v1 as tf
 
 import numpy as np
@@ -101,7 +98,6 @@ def model_train(inputs, blocks, args, sum_path='./output/tensorboard'):
                 # As the "train_op" is entered, this is where the backpropagation is done, because for that you need an optimizer!!!
                 # Reminder, that the last of the x's is used as the y, i.e. if from [0:n_his + 1] go thirteen,
                     # 12 will be used to make a prediction and this will be compared to the remaining thirteen to calculate the loss.
-                #TODO comprobar si se puede mejorar el proceso de entrenamiento (se entrena con npred = 1 y se desperdicia el resto)
                 summary, w = sess.run([merged, train_op], feed_dict={x: x_batch[:, 0:n_his + 1, :, :], keep_prob: 1})
                 writer.add_summary(summary, i * epoch_step + j)
 

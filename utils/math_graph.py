@@ -15,7 +15,7 @@ from tqdm import tqdm
 def progress_callback(v):
     print(f"Current eigenvalue: {v[0].real}")
 
-    
+
 def scaled_laplacian(W):
     '''
     Normalized graph Laplacian function.
@@ -31,9 +31,9 @@ def scaled_laplacian(W):
         for j in range(n):
             if (d[i] > 0) and (d[j] > 0):
                 L[i, j] = L[i, j] / np.sqrt(d[i] * d[j])
-    
+
     L = L.astype(float)
-    
+
     lambda_max = eigs(L, k=1, which='LR')[0][0].real
     return np.mat(2 * L / lambda_max - np.identity(n))
 
@@ -88,9 +88,8 @@ def weight_matrix(file_path, sigma2=0.1, epsilon=0.5, scaling=True):
     '''
     try:
         W = pd.read_csv(file_path, header=0).values
-        print(W.shape)
-        ### ORIGINAL
-        #W = pd.read_csv(file_path, header=None).values
+        print('Graph shape:', W.shape)
+
     except FileNotFoundError:
         print(f'ERROR: input file was not found in {file_path}.')
 
