@@ -110,7 +110,7 @@ def data_gen(file_path, data_config, n_frame, n_route, interpolation = False):
     seq_val = seq_test
 
     # stats: dict, the stats for the train dataset, including the value of mean, standard deviation and iqr.
-    stats = gen_stats(seq_train, normalization)
+    stats = gen_stats(seq_train.flatten(), normalization)
 
     # Normalization of each np.array: x_train, x_val, x_test
     x_train = scale(seq_train, stats, normalization)
