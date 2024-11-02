@@ -94,7 +94,7 @@ def model_inference(sess, pred, inputs, batch_size, n_his, n_pred, step_idx, min
 
 
 
-def model_test(inputs, batch_size, n_his, n_pred, inf_mode, load_path='./output/models/'):
+def model_test(inputs, batch_size, n_his, n_pred, inf_mode, evl_mode, load_path='./output/models/'):
     '''
     Load and test saved model from the checkpoint.
     :param inputs: instance of class Dataset, data source for test.
@@ -102,6 +102,7 @@ def model_test(inputs, batch_size, n_his, n_pred, inf_mode, load_path='./output/
     :param n_his: int, number of historical records used as input for the model.
     :param n_pred: int, the number of predictions.
     :param inf_mode: str, test mode - 'merge / multi-step test' or 'separate / single-step test'.
+    :param evl_mode: str, mode for the evaluation function.
     :param load_path: str, the path of loaded model.
     '''
     # Timer
@@ -134,19 +135,19 @@ def model_test(inputs, batch_size, n_his, n_pred, inf_mode, load_path='./output/
             raise ValueError(f'ERROR: test mode "{inf_mode}" is not defined.')
 
         # Test dataset, dataset statistics and normalization function applied to dataset
-        x_test, normalization, stats = inputs.get_data('test'), inputs.get_normalization(), inputs.get_stats()
+        x_test, normalize_type, stats = inputs.get_data('test'), inputs.get_normalization(), inputs.get_stats()
 
         # Predictions of the test dataset
         y_test, len_test = multi_pred(test_sess, pred, x_test, batch_size, n_his, n_pred)
         # Evaluate the predictions of y_test with the ground truth data stored in x_test.
         # Note: if inf_mode == 'sep' x_test -> [len(len_test), n_route, C_0], else x_test -> [len(len_test), len(step_idx), n_route, C_0]
-        evl = evaluation(x_test[0:len_test, step_idx + n_his, :, :], y_test[step_idx], normalization, stats)
+        evl = evaluation(x_test[0:len_test, step_idx + n_his, :, :], y_test[step_idx], normalize_type, stats, evl_mode)
 
         # Note: [n_pred, len(seq), n_route, C_0] -> [len(seq), n_pred, n_route, C_0]
         y_test = np.swapaxes(y_test, 0, 1)
         # Save model results in externals csv files
-        save_results(len_test, y_test[0:len_test, :, :, 0], normalization, stats, path = "predictions.csv")
-        save_results(len_test, x_test[0:len_test, n_his:, :, 0], normalization, stats, path = "groundTruth.csv")
+        save_results(len_test, y_test[0:len_test, :, :, 0], normalize_type, stats, path = "predictions.csv")
+        save_results(len_test, x_test[0:len_test, n_his:, :, 0], normalize_type, stats, path = "groundTruth.csv")
 
         # Show evaluation results
         for ix in tmp_idx:
@@ -164,16 +165,16 @@ def model_test(inputs, batch_size, n_his, n_pred, inf_mode, load_path='./output/
     print('Testing model finished!')
 
 
-def save_results(len_seq, seq, normalization, stats, path = 'results.csv'):
+def save_results(len_seq, seq, normalize_type, stats, path = 'results.csv'):
     '''
     Store a descaled np.array in a .csv file.
     :param len_seq: int , length of seq np.array.
     :param seq: int, the length of historical records for training.
-    :param normalization: string, normalization function.
+    :param normalize_type: string, normalization function.
     :param stats: dict, parameters for normalize and denormalize the dataset (mean & std/iqr).
     :param path: string, .
     '''
     for i in range(len_seq):
         # seq[i, :, :] = [n_pred, n_route]
-        save_results = pd.DataFrame(descale(seq[i, :, :], stats, normalization))
+        save_results = pd.DataFrame(descale(seq[i, :, :], stats, normalize_type))
         save_results.to_csv(path, header = None, index = False)

@@ -186,7 +186,6 @@ def inverse_log10_scale(x):
     return 10**x
 
 
-##############################################################################
 ################## Normalization Additional Functionalities ##################
 ##############################################################################
 
@@ -271,7 +270,6 @@ def gen_stats(data, normalize_type):
         raise ValueError("No accepted scalation type!!.")
 
 
-##############################################################################
 ############### Evaluation Between Ground Truth And Prediction ###############
 ##############################################################################
 
@@ -283,9 +281,6 @@ def MAPE(v, v_):
     :param v_: np.ndarray or int, prediction.
     :return: int, MAPE averages on all elements of input.
     '''
-    #TODO Como gestionar np.inf
-    v = v.replace(np.inf, 0)
-    v_ = v_.replace(-np.inf, 0)
     return np.mean(np.abs((v_ - v) / (v + 1e-5)))
 
 
@@ -309,25 +304,35 @@ def MAE(v, v_):
     return np.mean(np.abs(v_ - v))
 
 
-def evaluation(y, y_, normalization, stats):
+def evaluation(y, y_, normalize_type, stats, evl_mode='normalized'):
     '''
     Interface to calculate MAPE, MAE and RMSE between ground truth and prediction.
     Extended version: multi-step prediction can be calculated by self-calling.
     :param y: np.ndarray or int, ground truth.
     :param y_: np.ndarray or int, prediction.
-    :param normalization: string, normalization function.
+    :param normalize_type: string, normalization function.
     :param stats: dict, parameters for normalize and denormalize the dataset (mean & std/iqr).
+    :param evl_mode: str, mode for the evaluation function.
     :return: np.ndarray, averaged metric values.
     '''
     dim = len(y_.shape)
 
+    y = y.replace(np.inf, 0).replace(-np.inf, 0)
+    y_ = y_.replace(np.inf, 0).replace(-np.inf, 0)
+
     if dim == 3:
         # single_step case
+        if evl_mode == 'default':
+            v = descale(y, stats, normalize_type)
+            v_ = descale(y_, stats, normalize_type)
+            return np.array([MAPE(v, v_), MAE(v, v_), RMSE(v, v_)])
 
-        v = descale(y, stats, normalization)
-        v_ = descale(y_, stats, normalization)
+        elif evl_mode == 'normalized':
+            return np.array([MAPE(y, y_), MAE(y, y_), RMSE(y, y_)])
 
-        return np.array([MAPE(v, v_), MAE(v, v_), RMSE(v, v_)])
+        else:
+            raise ValueError(f'ERROR: evaluation mode "{evl_mode}" is not defined.')
+
     else:
         # multi_step case
         tmp_list = []
@@ -335,6 +340,6 @@ def evaluation(y, y_, normalization, stats):
         y = np.swapaxes(y, 0, 1)
         # recursively call
         for i in range(y_.shape[0]):
-            tmp_res = evaluation(y[i], y_[i], normalization, stats)
+            tmp_res = evaluation(y[i], y_[i], normalize_type, stats, evl_mode)
             tmp_list.append(tmp_res)
         return np.concatenate(tmp_list, axis=-1)
