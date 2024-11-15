@@ -317,8 +317,8 @@ def evaluation(y, y_, normalize_type, stats, evl_mode='normalized'):
     '''
     dim = len(y_.shape)
 
-    y = y.replace(np.inf, 0).replace(-np.inf, 0)
-    y_ = y_.replace(np.inf, 0).replace(-np.inf, 0)
+    y[np.isinf(y)] = 0
+    y_[np.isinf(y_)] = 0
 
     if dim == 3:
         # single_step case

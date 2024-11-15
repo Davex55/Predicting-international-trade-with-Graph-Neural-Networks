@@ -137,6 +137,9 @@ def model_test(inputs, batch_size, n_his, n_pred, inf_mode, evl_mode, load_path=
         # Test dataset, dataset statistics and normalization function applied to dataset
         x_test, normalize_type, stats = inputs.get_data('test'), inputs.get_normalization(), inputs.get_stats()
 
+        if n_his + n_pred > x_test.shape[1]:
+            raise ValueError(f'ERROR: the value of n_pred "{n_pred}" exceeds the length limit.')
+
         # Predictions of the test dataset
         y_test, len_test = multi_pred(test_sess, pred, x_test, batch_size, n_his, n_pred)
         # Evaluate the predictions of y_test with the ground truth data stored in x_test.
