@@ -170,9 +170,6 @@ def st_conv_block(x, Ks, Kt, channels, scope, keep_prob, act_func='GLU'):
 
     with tf.variable_scope(f'stn_block_{scope}_in'):
         x_s = temporal_conv_layer(x, Kt, c_si, c_t, act_func=act_func)
-
-        print("Tamaño de x", x)
-
         x_t = spatio_conv_layer(x_s, Ks, c_t, c_t)
     with tf.variable_scope(f'stn_block_{scope}_out'):
         x_o = temporal_conv_layer(x_t, Kt, c_t, c_oo)
