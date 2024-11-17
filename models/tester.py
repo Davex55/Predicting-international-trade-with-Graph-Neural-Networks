@@ -177,7 +177,11 @@ def save_results(len_seq, seq, normalize_type, stats, path = 'results.csv'):
     :param stats: dict, parameters for normalize and denormalize the dataset (mean & std/iqr).
     :param path: string, .
     '''
-    for i in range(len_seq):
-        # seq[i, :, :] = [n_pred, n_route]
-        save_results = pd.DataFrame(descale(seq[i, :, :], stats, normalize_type))
-        save_results.to_csv(path, header = None, index = False)
+
+    n_pred = seq.shape[1]
+    n_route = seq.shape[2]
+
+    # Note: [len(seq), n_pred, n_route] -> [len(seq) * n_pred, n_route]
+    seq = np.reshape(seq, (len_seq*n_pred, n_route))
+    save_results = pd.DataFrame(descale(seq, stats, normalize_type))
+    save_results.to_csv(path, header = None, index = False)
